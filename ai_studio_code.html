@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dai Lab - Project Budget Simulator</title>
+    <style>
+        :root {
+            --dai-coral: #f5826b;
+            --dai-blue: #89d2f2;
+            --primary: var(--dai-coral);
+            --secondary: var(--dai-blue);
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        /* Branding Header */
+        .lab-header {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .lab-logo { height: 80px; width: auto; }
+        .lab-title h1 { margin: 0; font-size: 1.6rem; color: #334155; }
+        .lab-title p { margin: 3px 0 0 0; color: var(--dai-coral); font-weight: bold; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; }
+
+        /* Dashboard */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            border-top: 5px solid #e2e8f0;
+        }
+
+        .stat-card.income { border-color: var(--dai-blue); }
+        .stat-card.pers { border-color: var(--dai-coral); }
+        .stat-card.other { border-color: #94a3b8; }
+        .stat-card.balance { border-color: #1e293b; }
+
+        .stat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 700; }
+        .stat-value { font-size: 1.5rem; font-weight: 800; margin-top: 5px; }
+
+        /* Toolbar */
+        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
+
+        /* Tables & Sections */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0 10px 0;
+        }
+
+        h2 { font-size: 1rem; color: #475569; margin: 0; display: flex; align-items: center; gap: 8px; }
+        h2::before { content: ""; display: inline-block; width: 4px; height: 16px; background: var(--dai-coral); border-radius: 2px; }
+
+        .card {
+            background: var(--card);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            overflow-x: auto;
+        }
+
+        table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+        th { text-align: left; font-size: 0.65rem; color: #94a3b8; padding: 10px; border-bottom: 1px solid #f1f5f9; text-transform: uppercase; }
+        td { padding: 8px 10px; border-bottom: 1px solid #f8fafc; }
+
+        input, select {
+            padding: 6px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            width: 100%;
+            font-size: 0.85rem;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .btn-add-pers { background: var(--dai-coral); color: white; }
+        .btn-add-other { background: #64748b; color: white; }
+        .btn-add-income { background: var(--dai-blue); color: white; }
+        .btn-util { background: white; border: 1px solid #e2e8f0; color: #64748b; }
+        .btn-del { background: #fff1f0; color: var(--danger); padding: 4px 8px; }
+        .btn:hover { opacity: 0.85; }
+
+        .total-col { font-weight: 700; font-size: 0.9rem; }
+        .days-badge { background: #f1f5f9; color: #64748b; padding: 2px 5px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        
+        #save-status { font-size: 0.7rem; color: #059669; margin-left: auto; font-weight: bold; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header -->
+    <header class="lab-header">
+        <img src="logo.png" alt="Dai Lab" class="lab-logo" onerror="this.style.visibility='hidden'">
+        <div class="lab-title">
+            <h1>Dai Lab Project Budget Simulator</h1>
+            <p>Lab Management & Resource Tracking</p>
+        </div>
+        <div id="save-status">✓ Auto-saved</div>
+    </header>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <button class="btn btn-util" onclick="exportData()">💾 Export JSON</button>
+        <button class="btn btn-util" onclick="document.getElementById('importFile').click()">📂 Import JSON</button>
+        <button class="btn btn-util" onclick="clearData()">🗑️ Reset All</button>
+        <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
+    </div>
+
+    <!-- Dashboard -->
+    <div class="dashboard">
+        <div class="stat-card income">
+            <div class="stat-label">Total Funding</div>
+            <div class="stat-value" id="dispIncome">$0.00</div>
+        </div>
+        <div class="stat-card pers">
+            <div class="stat-label">Personnel Costs</div>
+            <div class="stat-value" id="dispPers">$0.00</div>
+        </div>
+        <div class="stat-card other">
+            <div class="stat-label">Operations / Other</div>
+            <div class="stat-value" id="dispOther">$0.00</div>
+        </div>
+        <div class="stat-card balance">
+            <div class="stat-label">Free Balance</div>
+            <div class="stat-value" id="dispBal">$0.00</div>
+        </div>
+    </div>
+
+    <!-- INCOME -->
+    <div class="section-header">
+        <h2>1. Funding Sources</h2>
+        <button class="btn btn-add-income" onclick="addRow('income')">+ Add Funding</button>
+    </div>
+    <div class="card">
+        <table id="incomeTable">
+            <thead>
+                <tr>
+                    <th width="35%">Description</th>
+                    <th width="20%">Total Amount ($)</th>
+                    <th width="15%">Start Date</th>
+                    <th width="15%">End Date</th>
+                    <th width="10%">Total</th>
+                    <th width="5%"></th>
+                </tr>
+            </thead>
+            <tbody id="incomeBody"></tbody>
+        </table>
+    </div>
+
+    <!-- PERSONNEL -->
+    <div class="section-header">
+        <h2>2. Personnel (Pro-Rated)</h2>
+        <button class="btn btn-add-pers" onclick="addRow('personnel')">+ Add Member</button>
+    </div>
+    <div class="card">
+        <table id="personnelTable">
+            <thead>
+                <tr>
+                    <th width="20%">Name / Role</th>
+                    <th width="15%">Annual Salary ($)</th>
+                    <th width="10%">Fringe (%)</th>
+                    <th width="15%">Start Date</th>
+                    <th width="15%">End Date</th>
+                    <th width="10%">Days</th>
+                    <th width="10%">Cost</th>
+                    <th width="5%"></th>
+                </tr>
+            </thead>
+            <tbody id="personnelBody"></tbody>
+        </table>
+    </div>
+
+    <!-- OTHER EXPENSES -->
+    <div class="section-header">
+        <h2>3. Other Expenses (Pro-Rated Operational Costs)</h2>
+        <button class="btn btn-add-other" onclick="addRow('other')">+ Add Expense Item</button>
+    </div>
+    <div class="card">
+        <table id="otherTable">
+            <thead>
+                <tr>
+                    <th width="25%">Item Description</th>
+                    <th width="15%">Category</th>
+                    <th width="15%">Annual/Lump Rate ($)</th>
+                    <th width="12%">Start Date</th>
+                    <th width="12%">End Date</th>
+                    <th width="8%">Days</th>
+                    <th width="10%">Total Cost</th>
+                    <th width="3%"></th>
+                </tr>
+            </thead>
+            <tbody id="otherBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let idCounter = 0;
+
+    function addRow(type, data = null) {
+        idCounter++;
+        const tbody = document.getElementById(type + 'Body');
+        const tr = document.createElement('tr');
+        tr.id = `row-${idCounter}`;
+        tr.className = `${type}-row`;
+
+        const today = new Date().toISOString().split('T')[0];
+        const endYear = new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0];
+
+        if (type === 'income') {
+            tr.innerHTML = `
+                <td><input type="text" class="i-desc" value="${data?.desc || ''}" placeholder="Grant Name" oninput="calculate()"></td>
+                <td><input type="number" class="i-amt" value="${data?.amt || 100000}" oninput="calculate()"></td>
+                <td><input type="date" class="i-start" value="${data?.start || today}" oninput="calculate()"></td>
+                <td><input type="date" class="i-end" value="${data?.end || endYear}" oninput="calculate()"></td>
+                <td class="total-col i-total">$0.00</td>
+                <td><button class="btn btn-del" onclick="removeRow(${idCounter})">✕</button></td>
+            `;
+        } else if (type === 'personnel') {
+            tr.innerHTML = `
+                <td><input type="text" class="p-name" value="${data?.name || ''}" placeholder="Role" oninput="calculate()"></td>
+                <td><input type="number" class="p-amt" value="${data?.amt || 70000}" oninput="calculate()"></td>
+                <td><input type="number" class="p-fringe" value="${data?.fringe || 30}" oninput="calculate()"></td>
+                <td><input type="date" class="p-start" value="${data?.start || today}" oninput="calculate()"></td>
+                <td><input type="date" class="p-end" value="${data?.end || endYear}" oninput="calculate()"></td>
+                <td><span class="days-badge p-days">0</span></td>
+                <td class="total-col p-total" style="color:var(--dai-coral)">$0.00</td>
+                <td><button class="btn btn-del" onclick="removeRow(${idCounter})">✕</button></td>
+            `;
+        } else if (type === 'other') {
+            tr.innerHTML = `
+                <td><input type="text" class="o-desc" value="${data?.desc || ''}" placeholder="e.g. Mouse Housing" oninput="calculate()"></td>
+                <td>
+                    <select class="o-cat" onchange="calculate()">
+                        <option value="Animal Cost" ${data?.cat === 'Animal Cost' ? 'selected' : ''}>Animal Cost</option>
+                        <option value="Equipment" ${data?.cat === 'Equipment' ? 'selected' : ''}>Equipment</option>
+                        <option value="Supplies" ${data?.cat === 'Supplies' ? 'selected' : ''}>Supplies</option>
+                        <option value="Travel" ${data?.cat === 'Travel' ? 'selected' : ''}>Travel</option>
+                        <option value="Publication" ${data?.cat === 'Publication' ? 'selected' : ''}>Publication</option>
+                        <option value="Other" ${data?.cat === 'Other' ? 'selected' : ''}>Other</option>
+                    </select>
+                </td>
+                <td><input type="number" class="o-amt" value="${data?.amt || 5000}" oninput="calculate()"></td>
+                <td><input type="date" class="o-start" value="${data?.start || today}" oninput="calculate()"></td>
+                <td><input type="date" class="o-end" value="${data?.end || endYear}" oninput="calculate()"></td>
+                <td><span class="days-badge o-days">0</span></td>
+                <td class="total-col o-total" style="color:#64748b">$0.00</td>
+                <td><button class="btn btn-del" onclick="removeRow(${idCounter})">✕</button></td>
+            `;
+        }
+
+        tbody.appendChild(tr);
+        calculate();
+    }
+
+    function removeRow(id) { document.getElementById(`row-${id}`).remove(); calculate(); }
+
+    function calculate() {
+        let totalIncome = 0;
+        let totalPersonnel = 0;
+        let totalOther = 0;
+
+        document.querySelectorAll('.income-row').forEach(row => {
+            const val = parseFloat(row.querySelector('.i-amt').value) || 0;
+            totalIncome += val;
+            row.querySelector('.i-total').innerText = formatCurrency(val);
+        });
+
+        document.querySelectorAll('.personnel-row').forEach(row => {
+            const salary = parseFloat(row.querySelector('.p-amt').value) || 0;
+            const fringe = (parseFloat(row.querySelector('.p-fringe').value) || 0) / 100;
+            const start = new Date(row.querySelector('.p-start').value);
+            const end = new Date(row.querySelector('.p-end').value);
+            let cost = 0, days = 0;
+            if (end >= start) {
+                days = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+                const dailyBase = (salary / 365.25) * days;
+                cost = dailyBase * (1 + fringe);
+            }
+            totalPersonnel += cost;
+            row.querySelector('.p-days').innerText = days;
+            row.querySelector('.p-total').innerText = formatCurrency(cost);
+        });
+
+        document.querySelectorAll('.other-row').forEach(row => {
+            const amt = parseFloat(row.querySelector('.o-amt').value) || 0;
+            const start = new Date(row.querySelector('.o-start').value);
+            const end = new Date(row.querySelector('.o-end').value);
+            let cost = 0, days = 0;
+            if (end >= start) {
+                days = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+                // Pro-rating logic: (Annual rate / 365.25) * active days
+                cost = (amt / 365.25) * days;
+            }
+            totalOther += cost;
+            row.querySelector('.o-days').innerText = days;
+            row.querySelector('.o-total').innerText = formatCurrency(cost);
+        });
+
+        const balance = totalIncome - totalPersonnel - totalOther;
+        document.getElementById('dispIncome').innerText = formatCurrency(totalIncome);
+        document.getElementById('dispPers').innerText = formatCurrency(totalPersonnel);
+        document.getElementById('dispOther').innerText = formatCurrency(totalOther);
+        
+        const balEl = document.getElementById('dispBal');
+        balEl.innerText = formatCurrency(balance);
+        balEl.style.color = balance < 0 ? 'var(--danger)' : '#1e293b';
+
+        autoSave();
+    }
+
+    function serializeData() {
+        const data = { income: [], personnel: [], other: [] };
+        document.querySelectorAll('.income-row').forEach(row => {
+            data.income.push({ desc: row.querySelector('.i-desc').value, amt: row.querySelector('.i-amt').value, start: row.querySelector('.i-start').value, end: row.querySelector('.i-end').value });
+        });
+        document.querySelectorAll('.personnel-row').forEach(row => {
+            data.personnel.push({ name: row.querySelector('.p-name').value, amt: row.querySelector('.p-amt').value, fringe: row.querySelector('.p-fringe').value, start: row.querySelector('.p-start').value, end: row.querySelector('.p-end').value });
+        });
+        document.querySelectorAll('.other-row').forEach(row => {
+            data.other.push({ desc: row.querySelector('.o-desc').value, cat: row.querySelector('.o-cat').value, amt: row.querySelector('.o-amt').value, start: row.querySelector('.o-start').value, end: row.querySelector('.o-end').value });
+        });
+        return data;
+    }
+
+    function autoSave() {
+        localStorage.setItem('dai_lab_final_v3', JSON.stringify(serializeData()));
+        const st = document.getElementById('save-status');
+        st.style.display = 'inline';
+        setTimeout(() => st.style.display = 'none', 1500);
+    }
+
+    function loadData(source = null) {
+        const raw = source || JSON.parse(localStorage.getItem('dai_lab_final_v3'));
+        if (!raw) { addRow('income'); addRow('personnel'); addRow('other'); return; }
+        document.getElementById('incomeBody').innerHTML = '';
+        document.getElementById('personnelBody').innerHTML = '';
+        document.getElementById('otherBody').innerHTML = '';
+        raw.income?.forEach(d => addRow('income', d));
+        raw.personnel?.forEach(d => addRow('personnel', d));
+        raw.other?.forEach(d => addRow('other', d));
+    }
+
+    function exportData() {
+        const blob = new Blob([JSON.stringify(serializeData(), null, 2)], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `DaiLab_Budget_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+    }
+
+    function importData(e) {
+        const reader = new FileReader();
+        reader.onload = (ev) => loadData(JSON.parse(ev.target.result));
+        reader.readAsText(e.target.files[0]);
+    }
+
+    function clearData() { if(confirm("Erase all simulator data?")) { localStorage.removeItem('dai_lab_final_v3'); location.reload(); } }
+    function formatCurrency(n) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n); }
+
+    window.onload = () => loadData();
+</script>
+
+</body>
+</html>
